@@ -179,3 +179,45 @@ ggplot(coords, aes(x = x, y = y, color = marks)) +
   scale_color_gradient(low = "blue", high = "red") +  # Color gradient from low to high marks
   labs(title = "Spatial Distribution of Cases", x = "X Coordinate", y = "Y Coordinate") +
   theme_minimal()
+
+#
+library(deSolve)
+
+# Model definition
+sir_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    dS1 <- -beta * S1 * I1 + m21 * S2 - m12 * S1
+    dI1 <- beta * S1 * I1 - gamma * I1 + m21 * I2 - m12 * I1
+    dR1 <- gamma * I1 + m21 * R2 - m12 * R1
+    dS2 <- -beta * S2 * I2 + m12 * S1 - m21 * S2
+    dI2 <- beta * S2 * I2 - gamma * I2 + m12 * I1 - m21 * I2
+    dR2 <- gamma * I2 + m12 * R1 - m21 * R2
+    
+    return(list(c(dS1, dI1, dR1, dS2, dI2, dR2)))
+  })
+}
+
+# Initial state values
+initial_state <- c(S1 = 990, I1 = 10, R1 = 0, S2 = 1000, I2 = 0, R2 = 0)
+
+# Parameters
+parameters <- c(beta = 0.4, gamma = 0.1, m12 = 0.05, m21 = 0.05)
+
+# Time
+times <- seq(0, 50, by = 0.1)  # More frequent time points for stability
+
+# Solve ODE
+output <- ode(y = initial_state, times = times, func = sir_model, parms = parameters)
+
+# Convert output to a dataframe
+output_df <- as.data.frame(output)
+
+# Plot results
+library(ggplot2)
+output_long <- reshape2::melt(output_df, id.vars = "time")
+ggplot(output_long, aes(x = time, y = value, color = variable)) +
+  geom_line() +
+  labs(title = "SIR Model Across Two Patches", x = "Time (days)", y = "Population count",
+       color = "Compartment") +
+  theme_minimal()
+
